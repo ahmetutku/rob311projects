@@ -131,7 +131,7 @@ if __name__ == '__main__':
                   [2, 5],
                   [9, 4]])
     problem = GraphSearchProblem(goal_states, init_state, V, E)
-    path, num_nodes_expanded, max_frontier_size = breadth_first_search(problem)
+    path, num_nodes_expanded, max_frontier_size = bidirectional_search(problem)
     correct = problem.check_graph_solution(path)
     print("Solution is correct: {:}".format(correct))
     print(path)
