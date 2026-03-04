@@ -33,29 +33,29 @@ def bidirectional_search(problem):
     depth_f = {start_state: 0}
     depth_b = {goal_state: 0}
 
-    layer_depth_f = 0
-    layer_depth_b = 0
-
     num_nodes_expanded = 0
     max_frontier_size = len(frontier_f) + len(frontier_b)
 
-    best_meeting_state = None
-    best_total_edges = float('inf')
+    meeting_state = None
+    best_total = float('inf')
 
-    def update_best(meeting_state):
-        nonlocal best_meeting_state, best_total_edges
-        total_edges = depth_f[meeting_state] + depth_b[meeting_state]
-        if total_edges < best_total_edges:
-            best_total_edges = total_edges
-            best_meeting_state = meeting_state
+    next_depth_f = 0
+    next_depth_b = 0
 
-    def expand_one_layer(frontier, discovered_this, discovered_other,
-                         parent_this, depth_this, depth_other, current_depth):
+    def update_best(candidate_state):
+        nonlocal meeting_state, best_total
+        total_depth = depth_f[candidate_state] + depth_b[candidate_state]
+        if total_depth < best_total:
+            best_total = total_depth
+            meeting_state = candidate_state
+
+    def expand_layer(frontier, discovered_this, discovered_other,
+                     parent_this, depth_this, depth_other, current_depth):
+        nonlocal num_nodes_expanded, max_frontier_size
         layer_size = len(frontier)
         for _ in range(layer_size):
             state = frontier.popleft()
-            num_expanded_local = 1
-            new_nodes = []
+            num_nodes_expanded += 1
 
             if state in discovered_other:
                 update_best(state)
@@ -64,47 +64,52 @@ def bidirectional_search(problem):
                 child = problem.transition(state, action)
                 if child in discovered_this:
                     continue
+
                 discovered_this.add(child)
                 parent_this[child] = state
                 depth_this[child] = current_depth + 1
-                new_nodes.append(child)
+                frontier.append(child)
+
                 if child in discovered_other:
                     update_best(child)
 
-            for new_state in new_nodes:
-                frontier.append(new_state)
-
-            yield num_expanded_local
+                if len(frontier_f) + len(frontier_b) > max_frontier_size:
+                    max_frontier_size = len(frontier_f) + len(frontier_b)
 
     while frontier_f and frontier_b:
-        max_frontier_size = max(max_frontier_size, len(frontier_f) + len(frontier_b))
-
-        if len(frontier_f) <= len(frontier_b):
-            for expanded_count in expand_one_layer(frontier_f, discovered_f, discovered_b,
-                                                   parent_f, depth_f, depth_b, layer_depth_f):
-                num_nodes_expanded += expanded_count
-            layer_depth_f += 1
-        else:
-            for expanded_count in expand_one_layer(frontier_b, discovered_b, discovered_f,
-                                                   parent_b, depth_b, depth_f, layer_depth_b):
-                num_nodes_expanded += expanded_count
-            layer_depth_b += 1
-
-        if best_meeting_state is not None and (layer_depth_f + layer_depth_b) > best_total_edges:
+        if meeting_state is not None and (next_depth_f + next_depth_b) > best_total:
             break
 
-    if best_meeting_state is None:
-        return None, num_nodes_expanded, max_frontier_size
+        expand_layer(frontier_f, discovered_f, discovered_b,
+                     parent_f, depth_f, depth_b, next_depth_f)
+        next_depth_f += 1
+        if len(frontier_f) + len(frontier_b) > max_frontier_size:
+            max_frontier_size = len(frontier_f) + len(frontier_b)
+
+        if not frontier_f or not frontier_b:
+            break
+
+        if meeting_state is not None and (next_depth_f + next_depth_b) > best_total:
+            break
+
+        expand_layer(frontier_b, discovered_b, discovered_f,
+                     parent_b, depth_b, depth_f, next_depth_b)
+        next_depth_b += 1
+        if len(frontier_f) + len(frontier_b) > max_frontier_size:
+            max_frontier_size = len(frontier_f) + len(frontier_b)
+
+    if meeting_state is None:
+        return [], num_nodes_expanded, max_frontier_size
 
     path_forward = []
-    state = best_meeting_state
+    state = meeting_state
     while state is not None:
         path_forward.append(state)
         state = parent_f[state]
     path_forward.reverse()
 
     path_backward = []
-    state = parent_b[best_meeting_state]
+    state = parent_b[meeting_state]
     while state is not None:
         path_backward.append(state)
         state = parent_b[state]
