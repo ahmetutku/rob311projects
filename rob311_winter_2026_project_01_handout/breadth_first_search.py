@@ -30,7 +30,7 @@ def breadth_first_search(problem):
 
     while frontier:
         node = frontier.popleft()
-        frontier_states.remove(node.state)
+        frontier_states.discard(node.state)
 
         if problem.goal_test(node.state):
             return problem.trace_path(node), num_nodes_expanded, max_frontier_size
@@ -48,7 +48,7 @@ def breadth_first_search(problem):
         if len(frontier) > max_frontier_size:
             max_frontier_size = len(frontier)
 
-    return None, num_nodes_expanded, max_frontier_size
+    return [], num_nodes_expanded, max_frontier_size
 
 
 if __name__ == '__main__':
