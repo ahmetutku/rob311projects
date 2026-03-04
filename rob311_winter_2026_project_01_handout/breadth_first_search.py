@@ -13,13 +13,42 @@ def breadth_first_search(problem):
              num_nodes_expanded: number of nodes expanded by the search
              max_frontier_size: maximum frontier size during search
     """
-    ####
-    #   COMPLETE THIS CODE
-    ####
-    max_frontier_size = 0
+    # Do not add imports; autograder strips them.
+    # Return path + stats tuple; path is list of states.
+    # Return None/[] if no solution.
+    start_state = problem.init_state
+    if problem.goal_test(start_state):
+        return [start_state], 0, 1
+
+    root = Node(None, start_state, None, 0)
+    frontier = deque([root])
+    frontier_states = {start_state}
+    explored = set()
+
     num_nodes_expanded = 0
-    path = []
-    return path, num_nodes_expanded, max_frontier_size
+    max_frontier_size = 1
+
+    while frontier:
+        node = frontier.popleft()
+        frontier_states.remove(node.state)
+
+        if problem.goal_test(node.state):
+            return problem.trace_path(node), num_nodes_expanded, max_frontier_size
+
+        explored.add(node.state)
+        num_nodes_expanded += 1
+
+        for action in problem.get_actions(node.state):
+            child = problem.get_child_node(node, action)
+            if child.state in explored or child.state in frontier_states:
+                continue
+            frontier.append(child)
+            frontier_states.add(child.state)
+
+        if len(frontier) > max_frontier_size:
+            max_frontier_size = len(frontier)
+
+    return None, num_nodes_expanded, max_frontier_size
 
 
 if __name__ == '__main__':
