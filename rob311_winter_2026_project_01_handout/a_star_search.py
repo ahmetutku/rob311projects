@@ -13,10 +13,6 @@ def a_star_search(problem):
              num_nodes_expanded: number of nodes expanded by your search
              max_frontier_size: maximum frontier size during search
     """
-    # Do not add imports; autograder strips them.
-    # Return path + stats tuple; path is list of states.
-    # Return None/[] if no solution.
-    # nodes_generated counts all successor generations, even if pruned.
     start_state = problem.init_state
     if problem.goal_test(start_state):
         return [start_state], 0, 1
@@ -25,18 +21,17 @@ def a_star_search(problem):
     tie_breaker = 0
     g_score = {start_state: 0}
     came_from = {start_state: None}
-    closed = set()
 
     start_h = problem.heuristic(start_state) if hasattr(problem, 'heuristic') else 0
-    frontier.put((start_h, tie_breaker, start_state))
+    frontier.put((start_h, tie_breaker, start_state, 0))
 
-    nodes_generated = 0
+    num_nodes_expanded = 0
     max_frontier_size = 1
 
     while not frontier.empty():
-        _, _, current_state = frontier.get()
+        _, _, current_state, current_g = frontier.get()
 
-        if current_state in closed:
+        if current_g != g_score.get(current_state, float('inf')):
             continue
 
         if problem.goal_test(current_state):
@@ -46,30 +41,25 @@ def a_star_search(problem):
                 path.append(state)
                 state = came_from[state]
             path.reverse()
-            return path, nodes_generated, max_frontier_size
+            return path, num_nodes_expanded, max_frontier_size
 
-        closed.add(current_state)
+        num_nodes_expanded += 1
 
         for action in problem.get_actions(current_state):
             successor_state = problem.transition(current_state, action)
-            nodes_generated += 1
-
             step_cost = problem.action_cost(current_state, action, successor_state)
-            tentative_g = g_score[current_state] + step_cost
-            current_best = g_score.get(successor_state, float('inf'))
+            tentative_g = current_g + step_cost
 
-            if tentative_g < current_best:
+            if tentative_g < g_score.get(successor_state, float('inf')):
                 g_score[successor_state] = tentative_g
                 came_from[successor_state] = current_state
-                if successor_state in closed:
-                    closed.remove(successor_state)
                 tie_breaker += 1
                 heuristic_val = problem.heuristic(successor_state) if hasattr(problem, 'heuristic') else 0
-                frontier.put((tentative_g + heuristic_val, tie_breaker, successor_state))
+                frontier.put((tentative_g + heuristic_val, tie_breaker, successor_state, tentative_g))
                 if frontier.qsize() > max_frontier_size:
                     max_frontier_size = frontier.qsize()
 
-    return None, nodes_generated, max_frontier_size
+    return [], num_nodes_expanded, max_frontier_size
 
 
 def search_phase_transition():
