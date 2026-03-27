@@ -32,9 +32,9 @@ class MAB_agent:
         self.search_horizon = min(self.__num_arms, 20)
 
         # After the initial survey, probe a new arm on a sparse deterministic
-        # schedule: 8, 24, 56, 120, ... episodes after the search phase.
+        # schedule: 12, 36, 84, 180, ... episodes after the search phase.
         self.next_untried = self.search_horizon
-        self.probe_gap = 8
+        self.probe_gap = 12
         self.next_probe_step = self.search_horizon + self.probe_gap
 
         # Standard bandit state.
@@ -73,7 +73,7 @@ class MAB_agent:
         best_arm = 0
         best_score = float("-inf")
         best_count = -1
-        exploit_bonus = 0.10
+        exploit_bonus = 0.04
 
         for arm in self.arm_order[:self.next_untried]:
             count = self.counts[arm]
