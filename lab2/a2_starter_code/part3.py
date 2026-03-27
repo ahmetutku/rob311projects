@@ -15,7 +15,7 @@
  and receive stochastic rewards from each arm of +1 for success,
  and 0 reward for failure.
 """
-import numpy as np
+import math
 
 class MAB_agent:
     """
@@ -26,17 +26,20 @@ class MAB_agent:
     def __init__(self, num_arms=5):
         self.__num_arms = num_arms #private
         ## IMPLEMENTATION
-        # Number of times each arm has been selected.
-        self.counts = np.zeros(self.__num_arms, dtype=int)
+        # Number of pulls for each arm.
+        self.counts = [0] * self.__num_arms
 
-        # Estimated value of each arm.
-        self.values = np.zeros(self.__num_arms, dtype=float)
+        # Optimistic initial estimates encourage rapid discovery of good arms
+        # without spending one forced pull on every arm when there are many.
+        self.values = [1.0] * self.__num_arms
 
-        # Total number of actions taken so far.
+        # Total number of observed rewards.
         self.t = 0
 
-        # Exploration strength for UCB.
-        self.c = 2.0
+        # Search aggressively at the beginning, then exploit the strongest
+        # discovered arm for the short 400-step horizon.
+        self.search_horizon = min(30, self.__num_arms)
+        self.exploit_bonus = 0.15
 
     def update_state(self, action, reward):
         """
@@ -49,10 +52,9 @@ class MAB_agent:
         self.t += 1
         self.counts[action] += 1
 
-        # Incremental mean update:
-        # Q(a) <- Q(a) + (1 / N(a)) * (R - Q(a))
-        step_size = 1.0 / self.counts[action]
-        self.values[action] += step_size * (reward - self.values[action])
+        # O(1) incremental sample-average update for the selected arm only.
+        count = self.counts[action]
+        self.values[action] += (reward - self.values[action]) / count
 
     def get_action(self) -> int:
         """
@@ -62,14 +64,39 @@ class MAB_agent:
             Return the index of the arm picked by the policy.
         """
         ## IMPLEMENTATION
-        # Pull each arm at least once so every estimate is grounded in data.
-        unexplored = np.where(self.counts == 0)[0]
-        if len(unexplored) > 0:
-            return int(unexplored[0])
+        if self.t < self.search_horizon:
+            # Optimistic greedy search: continue a perfect success streak, but
+            # move on quickly after a failure to sample more candidate arms.
+            best_action = 0
+            best_value = self.values[0]
+            best_count = self.counts[0]
 
-        # Upper Confidence Bound (UCB) action selection balances exploration
-        # and exploitation for the stationary bandit setting in this assignment.
-        bonus = self.c * np.sqrt(np.log(self.t) / self.counts)
-        ucb_values = self.values + bonus
+            for arm in range(1, self.__num_arms):
+                value = self.values[arm]
+                count = self.counts[arm]
+                if value > best_value or (value == best_value and count > best_count):
+                    best_action = arm
+                    best_value = value
+                    best_count = count
 
-        return int(np.argmax(ucb_values))
+            return best_action
+
+        # After the search phase, ignore untouched arms and choose the best
+        # tried arm with a very small confidence bonus to correct early lucky
+        # estimates without returning to broad exploration.
+        best_action = 0
+        best_value = -1.0
+        best_count = -1
+
+        for arm in range(self.__num_arms):
+            count = self.counts[arm]
+            if count == 0:
+                continue
+
+            value = self.values[arm] + self.exploit_bonus / math.sqrt(count)
+            if value > best_value or (value == best_value and count > best_count):
+                best_action = arm
+                best_value = value
+                best_count = count
+
+        return best_action
