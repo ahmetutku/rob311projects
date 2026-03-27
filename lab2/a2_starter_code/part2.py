@@ -49,6 +49,57 @@ def policy_iteration(env: mdp_env, agent: mdp_agent, max_iter = 1000) -> np.ndar
     agent.utility = np.zeros([len(env.states), 1])
 
     ## START: Student code
+    num_states = len(env.states)
+    rewards = np.array(env.rewards, dtype=float).reshape(num_states, 1)
+
+    # Terminal-state utilities remain fixed at their immediate rewards.
+    for s in env.terminal:
+        agent.utility[s, 0] = rewards[s, 0]
+
+    for _ in range(max_iter):
+        # Policy evaluation: repeatedly update utilities for the current policy
+        # until the values converge.
+        while True:
+            previous_utility = agent.utility.copy()
+            delta = 0.0
+
+            for s in env.states:
+                if s in env.terminal:
+                    agent.utility[s, 0] = rewards[s, 0]
+                    continue
+
+                a = policy[s]
+                expected_utility = np.sum(
+                    env.transition_model[s, :, a] * previous_utility[:, 0]
+                )
+                agent.utility[s, 0] = rewards[s, 0] + agent.gamma * expected_utility
+                delta = max(delta, abs(agent.utility[s, 0] - previous_utility[s, 0]))
+
+            if delta < 1e-10:
+                break
+
+        # Policy improvement: greedily choose the best action under the
+        # evaluated utility function.
+        policy_stable = True
+
+        for s in env.states:
+            if s in env.terminal:
+                continue
+
+            old_action = policy[s]
+            action_values = np.zeros(len(env.actions))
+
+            for a in env.actions:
+                action_values[a] = rewards[s, 0] + agent.gamma * np.sum(
+                    env.transition_model[s, :, a] * agent.utility[:, 0]
+                )
+
+            policy[s] = int(np.argmax(action_values))
+            if policy[s] != old_action:
+                policy_stable = False
+
+        if policy_stable:
+            break
 
     ## END: Student code
     policy = policy.flatten()  # to get the policy to be of shape (n,) instead of (n,1)
