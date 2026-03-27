@@ -68,7 +68,7 @@ def test1(create_graph=False) -> int:
         #         "reward_avg = {}".format(np.sum(rewards) / len(rewards)))
         R += rewards
         for j, a in enumerate(actions): A[j][a] += 1
-    R_avg =  R / np.float(num_experiments)
+    R_avg =  R / float(num_experiments)
     probs = env.get_probs()
 
     # Plot avg reward vs step count and save figure
