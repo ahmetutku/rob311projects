@@ -15,8 +15,6 @@
  and receive stochastic rewards from each arm of +1 for success,
  and 0 reward for failure.
 """
-import math
-import random
 
 class MAB_agent:
     """
@@ -25,6 +23,8 @@ class MAB_agent:
         is able to maximize the reward on the Multi-Armed Bandit (MAB) environment.
     """
     def __init__(self, num_arms=5):
+        import random
+
         self.__num_arms = num_arms
 
         # Shuffle the arm order once so the search phase stays unbiased.
@@ -66,6 +66,9 @@ class MAB_agent:
             Return the index of the arm picked by the policy.
         """
         ## IMPLEMENTATION
+        import math
+        import random
+
         if self.t < self.search_horizon:
             return self.arm_order[self.t]
 
