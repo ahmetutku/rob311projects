@@ -48,6 +48,59 @@ def value_iteration(env: mdp_env, agent: mdp_agent, eps: float, max_iter = 1000)
     agent.utility = np.zeros([len(env.states), 1])
 
     ## START: Student code
+    num_states = len(env.states)
+    num_actions = len(env.actions)
+    rewards = np.array(env.rewards, dtype=float).reshape(num_states, 1)
+
+    # Terminal utilities should always stay equal to their immediate rewards.
+    for s in env.terminal:
+        agent.utility[s, 0] = rewards[s, 0]
+
+    # AIMA stopping rule: stop when the Bellman residual is small enough to
+    # guarantee an epsilon-optimal value function.
+    if agent.gamma == 1.0:
+        threshold = eps
+    else:
+        threshold = eps * (1.0 - agent.gamma) / agent.gamma
+
+    for _ in range(max_iter):
+        previous_utility = agent.utility.copy()
+        delta = 0.0
+
+        for s in env.states:
+            if s in env.terminal:
+                agent.utility[s, 0] = rewards[s, 0]
+                continue
+
+            action_values = np.zeros(num_actions)
+
+            # Bellman backup: evaluate each action using the transition model.
+            for a in env.actions:
+                action_values[a] = np.sum(
+                    env.transition_model[s, :, a] * previous_utility[:, 0]
+                )
+
+            agent.utility[s, 0] = rewards[s, 0] + agent.gamma * np.max(action_values)
+            delta = max(delta, abs(agent.utility[s, 0] - previous_utility[s, 0]))
+
+        if delta < threshold:
+            break
+
+    # Extract a greedy policy from the converged utilities.
+    for s in env.states:
+        if s in env.terminal:
+            policy[s] = env.actions[0]
+            continue
+
+        action_values = np.zeros(num_actions)
+        for a in env.actions:
+            action_values[a] = np.sum(
+                env.transition_model[s, :, a] * agent.utility[:, 0]
+            )
+
+        policy[s] = int(np.argmax(action_values))
+
+    policy = policy.flatten()
 
     ## END Student code
     return policy
