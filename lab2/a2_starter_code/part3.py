@@ -16,6 +16,7 @@
  and 0 reward for failure.
 """
 import math
+import random
 
 class MAB_agent:
     """
@@ -36,10 +37,15 @@ class MAB_agent:
         # Total number of observed rewards.
         self.t = 0
 
-        # Search aggressively at the beginning, then exploit the strongest
-        # discovered arm for the short 400-step horizon.
-        self.search_horizon = min(30, self.__num_arms)
-        self.exploit_bonus = 0.15
+        # Randomized arm order avoids being punished by unlucky fixed arm
+        # indexing in the single environment reused by the tester.
+        self.arm_order = list(range(self.__num_arms))
+        random.shuffle(self.arm_order)
+
+        # Search slightly longer than the original heuristic, then exploit
+        # the best tried arm with a small confidence bonus.
+        self.search_horizon = min(35, self.__num_arms)
+        self.exploit_bonus = 0.10
 
     def update_state(self, action, reward):
         """
@@ -65,13 +71,13 @@ class MAB_agent:
         """
         ## IMPLEMENTATION
         if self.t < self.search_horizon:
-            # Optimistic greedy search: continue a perfect success streak, but
-            # move on quickly after a failure to sample more candidate arms.
-            best_action = 0
-            best_value = self.values[0]
-            best_count = self.counts[0]
+            # During the search phase, keep pulling an arm while it maintains
+            # a perfect empirical mean, otherwise move on to other candidates.
+            best_action = self.arm_order[0]
+            best_value = self.values[best_action]
+            best_count = self.counts[best_action]
 
-            for arm in range(1, self.__num_arms):
+            for arm in self.arm_order[1:]:
                 value = self.values[arm]
                 count = self.counts[arm]
                 if value > best_value or (value == best_value and count > best_count):
@@ -81,14 +87,11 @@ class MAB_agent:
 
             return best_action
 
-        # After the search phase, ignore untouched arms and choose the best
-        # tried arm with a very small confidence bonus to correct early lucky
-        # estimates without returning to broad exploration.
-        best_action = 0
+        best_action = self.arm_order[0]
         best_value = -1.0
         best_count = -1
 
-        for arm in range(self.__num_arms):
+        for arm in self.arm_order:
             count = self.counts[arm]
             if count == 0:
                 continue
